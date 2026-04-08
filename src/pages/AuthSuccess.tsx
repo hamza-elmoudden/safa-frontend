@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import api from '../api';
 
 const AuthSuccess: React.FC = () => {
   const navigate = useNavigate();
@@ -13,13 +14,35 @@ const AuthSuccess: React.FC = () => {
 
     const handleSuccess = async () => {
       try {
-        // 1. جلب بيانات المستخدم
+        // قراءة التوكنات من URL params
+        // الباكند يعمل redirect إلى: /auth/success?access_token=...&refresh_token=...
+        const params = new URLSearchParams(window.location.search);
+        const accessToken = params.get('access_token');
+
+        console.log('access token:',accessToken)
+        
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken);
+          api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        }
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken);
+        }
+
+        if (!accessToken) {
+          console.error('No access_token in URL');
+          navigate('/login', { replace: true });
+          return;
+        }
+
+        // جلب بيانات المستخدم
         await refreshUser();
 
-        // 2. تحقق من وجود skinProfile
+        // تحقق من skinProfile
         const hasSkin = await refreshSkinProfile();
 
-        // 3. إذا لم يكمل ملف البشرة → وجّهه لصفحة الإعداد (اختياري)
         if (!hasSkin) {
           navigate('/setup-skin-profile', { replace: true });
         } else {
