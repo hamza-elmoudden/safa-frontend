@@ -35,7 +35,25 @@ const TreatmentsPage: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    api.get('/treatment/all').then(r => setTreatments(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+    api.get('/treatment/all')
+      .then(r => {
+        const data = r.data;
+        if (Array.isArray(data)) {
+          setTreatments(data);
+        } else if (Array.isArray(data?.treatments)) {
+          setTreatments(data.treatments);
+        } else if (Array.isArray(data?.data)) {
+          setTreatments(data.data);
+        } else {
+          console.error('Unexpected response from API:', data);
+          setTreatments([]);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load treatments:', err);
+        setTreatments([]);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
