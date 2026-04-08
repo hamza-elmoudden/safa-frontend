@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Send, ImagePlus, X, ArrowLeft, Stethoscope } from 'lucide-react';
-import api, { API_BASE } from '../api';
+import api from '../api';
 
 interface Message {
   id: string;
@@ -48,14 +48,29 @@ const TreatmentChatPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     api.get(`/treatment/${id}`).then(r => setTreatment(r.data)).catch(() => {});
-    api.get(`/chattreatment/${id}`).then(r => {
-      const chats = r.data || [];
-      const msgs: Message[] = chats.flatMap((c: any) => [
-        { id: c.id + '-u', role: 'user' as const, text: c.user_message, imageUrl: c.image_url },
-        { id: c.id + '-a', role: 'ai' as const, text: c.ai_response },
-      ]);
-      setMessages(msgs);
-    }).catch(() => {});
+    api.get(`/chattreatment/${id}`)
+      .then(r => {
+        const data = r.data;
+        let chats: any[];
+        if (Array.isArray(data)) {
+          chats = data;
+        } else if (Array.isArray(data?.chats)) {
+          chats = data.chats;
+        } else if (Array.isArray(data?.data)) {
+          chats = data.data;
+        } else {
+          console.error('Unexpected response from API:', data);
+          chats = [];
+        }
+        const msgs: Message[] = chats.flatMap((c: any) => [
+          { id: c.id + '-u', role: 'user' as const, text: c.user_message, imageUrl: c.image_url },
+          { id: c.id + '-a', role: 'ai' as const, text: c.ai_response },
+        ]);
+        setMessages(msgs);
+      })
+      .catch(err => {
+        console.error('Failed to load chat history:', err);
+      });
   }, [id]);
 
   useEffect(() => {
@@ -99,7 +114,8 @@ const TreatmentChatPage: React.FC = () => {
       formData.append('text', sentInput);
       if (sentImage) formData.append('image', sentImage);
 
-      const response = await fetch(`${API_BASE}/ai/treatment?treatmentId=${id}`, {
+      const baseUrl = (api.defaults.baseURL || '').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/ai/treatment?treatmentId=${id}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

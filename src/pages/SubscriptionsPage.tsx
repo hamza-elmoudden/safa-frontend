@@ -37,8 +37,16 @@ const SubscriptionsPage: React.FC = () => {
       api.get('/subscriptions').catch(() => ({ data: [] })),
       api.get('/subscriptions/my').catch(() => ({ data: null })),
     ]).then(([plansRes, myRes]) => {
-      setPlans(plansRes.data || []);
-      setActiveSub(myRes.data);
+      const plansData = plansRes.data;
+      if (Array.isArray(plansData)) {
+        setPlans(plansData);
+      } else if (Array.isArray(plansData?.data)) {
+        setPlans(plansData.data);
+      } else {
+        console.error('Unexpected response from API:', plansData);
+        setPlans([]);
+      }
+      setActiveSub(myRes.data ?? myRes.data?.data ?? null);
     }).finally(() => setLoading(false));
   }, []);
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, ImagePlus, X, Sparkles } from 'lucide-react';
-import api, { API_BASE } from '../api';
+import api from '../api';
 
 interface Message {
   id: string;
@@ -22,14 +22,29 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     // Load conversation history
-    api.get('/conversations').then(r => {
-      const convs = r.data || [];
-      const msgs: Message[] = convs.flatMap((c: any) => [
-        { id: c.id + '-u', role: 'user' as const, text: c.message_user, imageUrl: c.user_photo_url },
-        { id: c.id + '-a', role: 'ai' as const, text: c.message_ai },
-      ]);
-      setMessages(msgs);
-    }).catch(() => {});
+    api.get('/conversations')
+      .then(r => {
+        const data = r.data;
+        let convs: any[];
+        if (Array.isArray(data)) {
+          convs = data;
+        } else if (Array.isArray(data?.conversations)) {
+          convs = data.conversations;
+        } else if (Array.isArray(data?.data)) {
+          convs = data.data;
+        } else {
+          console.error('Unexpected response from API:', data);
+          convs = [];
+        }
+        const msgs: Message[] = convs.flatMap((c: any) => [
+          { id: c.id + '-u', role: 'user' as const, text: c.message_user, imageUrl: c.user_photo_url },
+          { id: c.id + '-a', role: 'ai' as const, text: c.message_ai },
+        ]);
+        setMessages(msgs);
+      })
+      .catch(err => {
+        console.error('Failed to load conversations:', err);
+      });
   }, []);
 
   useEffect(() => {
@@ -78,7 +93,8 @@ const ChatPage: React.FC = () => {
       formData.append('text', sentInput);
       if (sentImage) formData.append('image', sentImage);
 
-      const response = await fetch(`${API_BASE}/ai/chat`, {
+      const baseUrl = (api.defaults.baseURL || '').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/ai/chat`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
