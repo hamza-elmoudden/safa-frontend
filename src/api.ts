@@ -4,7 +4,7 @@ const API_BASE =  process.env.REACT_APP_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true, // يرسل الكوكيز تلقائياً مع كل طلب
+  withCredentials: true,
 });
 
 // أضف access_token من localStorage إذا موجود (fallback)
@@ -16,9 +16,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// هذه الـ endpoints لا تحتاج refresh — لو فشلوا نوجه للـ login مباشرة
-// /auth/me is the initial session check — if it 401s the user is simply not logged in,
-// attempting a token refresh here would cause an infinite loop.
+
 const AUTH_SKIP_URLS = ['/auth/refresh', '/auth/logout', '/auth/google', '/auth/me'];
 
 let isRefreshing = false;
